@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cyberpunk Neon Chatroom 🌆</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --neon-primary: #0affff;
+  --neon-secondary: #ff00ea;
+  --bg-dark: #0a0f14;
+  --header-bg: #000d1a;
+  --glass: rgba(255,255,255,0.05);
+  --text-light: #00121a;
+  --btn-radius: 8px;
+}
+
+/* Light theme overrides */
+[data-theme="light"] {
+  --neon-primary: #001f2a;
+  --neon-secondary: #6a0066;
+  --bg-dark: #f6f9fb;
+  --header-bg: #e6eef4;
+  color: var(--neon-primary);
+  --glass: rgba(0,0,0,0.03);
+}
+
+html, body {
+  margin:0;
+  padding:0;
+  height:100%;
+  font-family: 'Share Tech Mono', monospace;
+  background: var(--bg-dark);
+  color: var(--neon-primary);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* allow scrolling on small devices while keeping the layout consistent */
+#app {
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+
+header {
+  background: var(--header-bg);
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--neon-primary);
+  text-shadow: 0 0 10px var(--neon-primary);
+}
+
+.glitch {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 3px;
+}
+
+#chat-frame {
+  flex-grow: 1;
+  width: 100%;
+  border: none;
+  background:#000;
+  height: calc(100vh - 80px);
+  min-height: 400px;
+}
+
+/* ensure footer sticks to bottom visually but allows scrolling if needed */
+footer {
+  text-align: center;
+  padding: 10px;
+  font-size: 12px;
+  background: var(--header-bg);
+  border-top: 2px solid var(--neon-secondary);
+  text-shadow: 0 0 10px var(--neon-secondary);
+}
+
+.btn {
+  background:none;
+  border:2px solid var(--neon-secondary);
+  color: var(--neon-secondary);
+  padding:8px 15px;
+  cursor:pointer;
+  border-radius:var(--btn-radius);
+  transition:0.25s;
+  text-shadow: 0 0 10px var(--neon-secondary);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: scale(0.99);
+}
+
+.btn:hover:not([disabled]) {
+  background: var(--neon-secondary);
+  color:black;
+  box-shadow:0 0 20px var(--neon-secondary);
+}
+
+#bot-toggle-area {
+  position: fixed;
+  bottom:15px;
+  right:15px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  z-index:99;
+  align-items:flex-end;
+}
+
+/* Typing indicator and cooldown badge */
+.bot-meta {
+  font-size: 12px;
+  color: var(--neon-secondary);
+  margin-top: 6px;
+  text-align: right;
+}
+
+/* focus accessibility */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 3px solid rgba(10,255,255,0.18);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* small responsive adjustments */
+@media (max-width:600px){
+  .glitch { font-size:18px; }
+  #chat-frame { height: calc(100vh - 120px); }
+}
+
+/* Neo-Tokyo Rain Background (subtle) */
+body::before {
+  content:"";
+  position:fixed;
+  top:0; left:0; width:100%; height:100%;
+  background:transparent;
+  pointer-events:none;
+  z-index:-1;
+  animation: rainAnim 2s linear infinite;
+  opacity: 0.06;
+}
+
+@keyframes rainAnim {
+  0% { background: repeating-linear-gradient(0deg, rgba(10,255,255,0.05) 0px, rgba(10,255,255,0) 1px); }
+  100% { background: repeating-linear-gradient(0deg, rgba(10,255,255,0.05) 100px, rgba(10,255,255,0) 101px); }
+}
+
+/* small badge for cooldown */
+.cooldown-badge {
+  display:inline-block;
+  margin-left:8px;
+  padding:2px 6px;
+  background: rgba(0,0,0,0.25);
+  color: var(--neon-primary);
+  border-radius: 12px;
+  font-size: 12px;
+}
+</style>
+</head>
+
+<body>
+<div id="app" role="application">
+  <header role="banner" aria-label="Neon city chat header">
+    <div class="glitch">🌆 NEON CITY CHAT</div>
+    <div>
+      <button id="theme-toggle" class="btn" aria-pressed="false" aria-label="Toggle theme">🌗 MODE</button>
+    </div>
+  </header>
+
+  <!--
+    NOTE: sandbox is set to reduce risk. Some embedded services may require different flags.
+    If features break (camera/microphone access), adjust sandbox/allow attributes accordingly.
+  -->
+  <iframe
+    id="chat-frame"
+    src="https://deadsimplechat.com/VG3FuoEY8"
+    allow="microphone; camera; autoplay"
+    sandbox="allow-scripts allow-same-origin"
+    title="Dead Simple Chat embed"
+    aria-label="Chat window"
+  ></iframe>
+
+  <footer role="contentinfo">
+    © 2077 — Neo-Tokyo Gangsters 💀
+  </footer>
+
+  <div id="bot-toggle-area" role="region" aria-label="Chat bots">
+    <div>
+      <button id="sigma-btn" class="btn" aria-label="Send message from Sigma bot">💪 SIGMA-BOT</button>
+      <span id="sigma-meta" class="bot-meta" aria-hidden="true"></span>
+    </div>
+    <div>
+      <button id="edgy-btn" class="btn" aria-label="Send message from Edgy AI">😈 EDGY-AI</button>
+      <span id="edgy-meta" class="bot-meta" aria-hidden="true"></span>
+    </div>
+    <div>
+      <button id="quote-btn" class="btn" aria-label="Send a neo-tokyo quote">💬 Neo Quote</button>
+      <span id="quote-meta" class="bot-meta" aria-hidden="true"></span>
+    </div>
+  </div>
+
+  <!-- preloaded audio with fallback handling -->
+  <audio id="msg-sound" preload="auto" src="https://assets.mixkit.co/sfx/preview/mixkit-cool-interface-click-tone-2564.mp3"></audio>
+</div>
+
+<script>
+/*
+  Implemented changes:
+  - Secured postMessage by targeting known origin and sending a structured envelope.
+  - Added incoming message listener that validates origin and plays a sound on incoming chat messages.
+  - Added sandbox on iframe (may need adjustment depending on third-party requirements).
+  - Implemented a light theme and toggle that respects [data-theme="light"] variables.
+  - Accessibility: aria labels, roles, focus-visible outlines.
+  - Per-button cooldown to prevent spam; shows a small countdown badge.
+  - Typing simulation before sending bot messages.
+  - Preloads audio and handles play() promise rejections gracefully.
+  - Removed global pollution by scoping variables inside an IIFE.
+*/
+
+(() => {
+  'use strict';
+
+  // Configuration
+  const CHAT_ORIGIN = 'https://deadsimplechat.com';
+  const CHAT_IFRAME_ID = 'chat-frame';
+  const COOLDOWN_MS = 3000;            // 3 second cooldown per bot
+  const TYPING_MIN_MS = 200;
+  const TYPING_MAX_MS = 700;
+  const BETWEEN_MESSAGES_MS = 400;
+
+  // DOM refs
+  const chatFrame = document.getElementById(CHAT_IFRAME_ID);
+  const sound = document.getElementById('msg-sound');
+  const themeToggle = document.getElementById('theme-toggle');
+
+  const bots = {
+    'SIGMA-BOT 💪': {
+      btn: document.getElementById('sigma-btn'),
+      meta: document.getElementById('sigma-meta'),
+      messages: [
+        "Grind never stops bro 😤💼",
+        "Go touch some grass later, now keep hustling 💪",
+        "Remember: No excuses, only results 💥"
+      ],
+      cooldownUntil: 0
+    },
+    'EDGY-AI 😈': {
+      btn: document.getElementById('edgy-btn'),
+      meta: document.getElementById('edgy-meta'),
+      messages: [
+        "Bro really using chat instead of humans? 💀",
+        "Ratio detected 😎",
+        "Skill issue, get good or rage quit 💀🔥"
+      ],
+      cooldownUntil: 0
+    },
+    'NEO-QUOTE 🌀': {
+      btn: document.getElementById('quote-btn'),
+      meta: document.getElementById('quote-meta'),
+      messages: [
+        "Night City never sleeps 🕶️",
+        "Neon lights, cold hearts 💔",
+        "Rain on the streets, code in my veins 💻",
+        "Glitch in the system, sigma in the chat ⚡"
+      ],
+      cooldownUntil: 0
+    }
+  };
+
+  // Utility
+  const now = () => Date.now();
+  const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+  const randomFrom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  // Safely play a sound; many browsers require a user gesture.
+  function playSound() {
+    if (!sound) return;
+    const p = sound.play();
+    if (p && p.catch) {
+      p.catch(() => {
+        // play failed (autoplay or other restriction). silently ignore.
+      });
+    }
+  }
+
+  // Structured message envelope
+  function makeEnvelope(username, text) {
+    return {
+      type: 'dsc_chat_message', // custom envelope type
+      username,
+      text,
+      ts: new Date().toISOString()
+    };
+  }
+
+  // Send message to DSC iframe with origin validation (targetOrigin specified)
+  function postToChat(envelope) {
+    if (!chatFrame || !chatFrame.contentWindow) {
+      console.warn('Chat iframe unavailable.');
+      return;
+    }
+    try {
+      // Explicit target origin reduces risk of accidental posting
+      chatFrame.contentWindow.postMessage(envelope, CHAT_ORIGIN);
+    } catch (err) {
+      console.error('postMessage failed', err);
+    }
+  }
+
+  // Show transient meta (typing/cooldown) text
+  function setMeta(botMetaEl, text) {
+    if (!botMetaEl) return;
+    botMetaEl.textContent = text || '';
+  }
+
+  // Manage cooldown UI and disable/enable of button
+  function setCooldown(botKey, ms) {
+    const bot = bots[botKey];
+    if (!bot) return;
+    const btn = bot.btn;
+    const meta = bot.meta;
+    const end = now() + ms;
+    bot.cooldownUntil = end;
+    btn.disabled = true;
+
+    // Show countdown badge
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((bot.cooldownUntil - now()) / 1000));
+      if (remaining > 0) {
+        setMeta(meta, `Cooldown: ${remaining}s`);
+        // schedule next update in ~200ms
+        bot._timeout = setTimeout(update, 200);
+      } else {
+        btn.disabled = false;
+        setMeta(meta, '');
+        bot.cooldownUntil = 0;
+      }
+    };
+    update();
+  }
+
+  // Typing simulation: returns a Promise that resolves when simulation ends.
+  function simulateTyping(botKey, linesCount = 1) {
+    const bot = bots[botKey];
+    if (!bot) return Promise.resolve();
+    return new Promise((resolve) => {
+      const totalDelay = randInt(TYPING_MIN_MS, TYPING_MAX_MS) + (linesCount - 1) * BETWEEN_MESSAGES_MS;
+      setMeta(bot.meta, 'typing...');
+      setTimeout(() => {
+        setMeta(bot.meta, '');
+        resolve();
+      }, totalDelay);
+    });
+  }
+
+  // Send one or multiple messages with typing simulation for realism
+  async function sendBotMessages(botKey, messages) {
+    const username = botKey;
+    if (!messages || messages.length === 0) return;
+
+    // Simulate typing for the batch
+    await simulateTyping(botKey, messages.length);
+
+    // send messages in sequence with small gap
+    for (let i = 0; i < messages.length; i++) {
+      const text = messages[i];
+      const envelope = makeEnvelope(username, text);
+      postToChat(envelope);
+      playSound();
+      if (i < messages.length - 1) {
+        await new Promise(r => setTimeout(r, BETWEEN_MESSAGES_MS));
+      }
+    }
+  }
+
+  // Generic handler wired to UI buttons
+  function handleBotClick(botKey) {
+    const bot = bots[botKey];
+    if (!bot) return;
+
+    // Respect cooldown
+    if (bot.cooldownUntil && now() < bot.cooldownUntil) {
+      setMeta(bot.meta, 'On cooldown...');
+      return;
+    }
+
+    // Prepare messages (could be more than one)
+    const chosen = randomFrom(bot.messages);
+
+    // Optional: occasionally send two lines for flavor
+    const maybeTwo = Math.random() < 0.12;
+    const payload = maybeTwo ? [chosen, randomFrom(bot.messages)] : [chosen];
+
+    // Start cooldown and send
+    setCooldown(botKey, COOLDOWN_MS);
+    sendBotMessages(botKey, payload).catch(err => {
+      console.error('Failed to send bot messages', err);
+    });
+  }
+
+  // Theme toggle behavior with attribute, persist to localStorage
+  function initTheme() {
+    const root = document.documentElement;
+    const stored = localStorage.getItem('cyber-theme');
+    if (stored) root.setAttribute('data-theme', stored);
+    themeToggle.addEventListener('click', () => {
+      const current = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      themeToggle.setAttribute('aria-pressed', String(next === 'light'));
+      localStorage.setItem('cyber-theme', next);
+    });
+  }
+
+  // Incoming messages from iframe (if the embed posts messages back)
+  function handleIncomingMessages() {
+    window.addEventListener('message', (event) => {
+      // validate origin
+      if (event.origin !== CHAT_ORIGIN) return;
+      const data = event.data;
+      if (!data) return;
+
+      // Example: if embed sends a structured event we can react to it
+      // We look for a known type or simple shape
+      // NOTE: The exact shape depends on the embed; we're robust to variations.
+      try {
+        if (typeof data === 'object' && (data.type === 'dsc_chat_message' || data.type === 'dsc_event')) {
+          // play on incoming chat messages
+          if (data.type === 'dsc_chat_message' || data.event === 'new_message') {
+            playSound();
+          }
+        } else if (typeof data === 'string') {
+          // some embeds send strings; be conservative
+          // if the string mentions "message" play sound
+          if (data.toLowerCase().includes('message')) playSound();
+        }
+      } catch (err) {
+        // ignore malformed messages
+      }
+    });
+  }
+
+  // Wire UI events
+  function wireUI() {
+    Object.keys(bots).forEach((botKey) => {
+      const bot = bots[botKey];
+      if (!bot || !bot.btn) return;
+      bot.btn.addEventListener('click', () => handleBotClick(botKey));
+
+      // keyboard accessibility: Enter and Space
+      bot.btn.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          handleBotClick(botKey);
+        }
+      });
+    });
+
+    // Ensure iframe is focusable for keyboard users
+    if (chatFrame) {
+      chatFrame.setAttribute('tabindex', '0');
+    }
+  }
+
+  // Attempt to warm audio (some browsers require user gesture; we will not force play)
+  function warmAudio() {
+    if (!sound) return;
+    try {
+      sound.load();
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  // Initialize all
+  function init() {
+    initTheme();
+    wireUI();
+    handleIncomingMessages();
+    warmAudio();
+  }
+
+  // Boot
+  document.addEventListener('DOMContentLoaded', init);
+
+  // Expose a safe debug API on window for manual testing only if a dev flag is present
+  if (location.search.includes('dev=true')) {
+    window._cyberDebug = {
+      bots,
+      postToChat,
+      makeEnvelope
+    };
+  }
+})();
+</script>
+
+</body>
+</html>
